@@ -1,4 +1,4 @@
-name: ImmortalWrt Builder(ARM64)
+name: ImmortalWrt Builder
 
 on:
     repository_dispatch:
