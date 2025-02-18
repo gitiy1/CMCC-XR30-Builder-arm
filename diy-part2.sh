@@ -11,17 +11,18 @@
 function config_del(){
     yes="CONFIG_$1=y"
     no="# CONFIG_$1 is not set"
-    # no="CONFIG_$1=n"
 
-    sed -i "s/$yes/$no/" .config
+    sed -i "/$yes/d" .config
+    if ! grep -q "$no" .config; then
+        echo "$no" >> .config
+    fi
 }
 
 function config_add(){
     yes="CONFIG_$1=y"
     no="# CONFIG_$1 is not set"
 
-    sed -i "s/${no}/${yes}/" .config
-
+    sed -i "/$no/d" .config
     if ! grep -q "$yes" .config; then
         echo "$yes" >> .config
     fi
@@ -197,7 +198,7 @@ config_package_del simple-obfs
 rm -r package/custom/shadowsocks-rust
 rm -r package/custom/simple-obfs
 
-## 定时任务。重启、关机、重启网络、释放内存、系统清理、网络共享、关闭网络、自动检测断网重连、MWAN3负载均衡检测重连、自定义脚本等10多个功能
+## 定时任务。重启、关机、重启网络、释放内存、系统清理、网络共享、关闭网络、自动检测断网重连、MWAN3负载均衡检测重连、自定义脚本等10多个功�
 config_package_add luci-app-autotimeset
 config_package_add luci-lib-ipkg
 
