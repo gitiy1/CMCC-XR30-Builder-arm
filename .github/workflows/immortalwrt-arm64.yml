@@ -17,7 +17,6 @@ env:
     OPENWRT_NAME: hanwckf
     UPLOAD_TAG_NAME: cmcc_xr30
     FEEDS_CONF: feeds.conf.default
-    # CONFIG_FILE: .config
     DIY_P1_SH: diy-part1.sh
     DIY_P2_SH: diy-part2.sh
 
@@ -36,12 +35,7 @@ jobs:
             - name: Free disk space (Ubuntu)
               uses: jlumbroso/free-disk-space@main
               with:
-                # this might remove tools that are actually needed,
-                # if set to "true" but frees about 6 GB
                 tool-cache: false
-
-                # all of these default to true, but feel free to set to
-                # "false" if necessary for your workflow
                 android: true
                 dotnet: true
                 haskell: true
@@ -59,13 +53,75 @@ jobs:
                 DEBIAN_FRONTEND: noninteractive
               run: |
                 sudo -E apt-get -qq update
-                sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-                bzip2 ccache clang clangd cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext groovy \
-                git gperf haveged help2man intltool libelf-dev libglib2.0-dev \
-                libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5 libncursesw5-dev libreadline-dev \
-                libssl-dev libtool lld lldb lrzsz mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 \
-                python3 python3-pip python3-ply python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig \
-                texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev golang-go
+                sudo -E apt-get install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison \
+                    build-essential bzip2 ccache cmake cpio curl device-tree-compiler ecj fakeroot \
+                    fastjar flex gawk gettext genisoimage git gnutls-dev gperf haveged help2man \
+                    intltool irqbalance jq libc6-dev libelf-dev libglib2.0-dev libgmp3-dev \
+                    libltdl-dev libmpc-dev libmpfr-dev libncurses-dev libreadline-dev libssl-dev \
+                    libtool libyaml-dev libz-dev lrzsz msmtp nano ninja-build p7zip p7zip-full patch \
+                    pkgconf python3-dev python3 python3-pip python3-cryptography python3-docutils \
+                    python3-ply python3-pyelftools python3-requests qemu-utils quilt re2c rsync scons \
+                    sharutils squashfs-tools subversion swig texinfo uglifyjs unzip vim wget xmlto \
+                    zlib1g-dev zstd xxd golang-go
+
+                # Install LLVM 18
+                wget https://apt.llvm.org/llvm.sh
+                chmod +x llvm.sh
+                sudo ./llvm.sh 18
+                for i in "clang-18" "clang++-18" "clang-cpp-18" "ld.lld-18" "ld64.lld-18" "llc-18" "lld-18" "lld-link-18" "opt-18" "wasm-ld-18"; do
+                    sudo ln -svf "$i" "/usr/bin/${i%-18}"
+                done
+                for i in "/usr/bin"/llvm-*-18; do
+                    sudo ln -svf "$i" "${i%-18}"
+                done
+                
+                # Install Node.js
+                sudo mkdir -p /etc/apt/keyrings
+                curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+                echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+                sudo apt-get update
+                sudo apt-get install -y nodejs
+
+                # Install Yarn
+                curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/yarn.gpg
+                echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+                sudo apt-get update
+                sudo apt-get install -y yarn
+
+                # Install UPX
+                UPX_REV="4.2.4"
+                curl -fLO "https://github.com/upx/upx/releases/download/v${UPX_REV}/upx-$UPX_REV-amd64_linux.tar.xz"
+                sudo tar -Jxf "upx-$UPX_REV-amd64_linux.tar.xz"
+                sudo rm -rf "/usr/bin/upx" "/usr/bin/upx-ucl"
+                sudo cp -fp "upx-$UPX_REV-amd64_linux/upx" "/usr/bin/upx-ucl"
+                sudo chmod 0755 "/usr/bin/upx-ucl"
+                sudo ln -svf "/usr/bin/upx-ucl" "/usr/bin/upx"
+
+                # Install required tools from OpenWrt source
+                git clone --filter=blob:none --no-checkout "https://github.com/openwrt/openwrt.git" "padjffs2"
+                cd "padjffs2"
+                git config core.sparseCheckout true
+                echo "tools/padjffs2/src" >> ".git/info/sparse-checkout"
+                git checkout
+                cd "tools/padjffs2/src"
+                make
+                sudo cp -fp "padjffs2" "/usr/bin/padjffs2"
+                cd ../../..
+
+                git clone --filter=blob:none --no-checkout "https://github.com/openwrt/luci.git" "po2lmo"
+                cd "po2lmo"
+                git config core.sparseCheckout true
+                echo "modules/luci-base/src" >> ".git/info/sparse-checkout"
+                git checkout
+                cd "modules/luci-base/src"
+                make po2lmo
+                sudo cp -fp "po2lmo" "/usr/bin/po2lmo"
+                cd ../../../..
+
+                curl -fL "https://build-scripts.immortalwrt.org/modify-firmware.sh" -o "modify-firmware"
+                sudo cp -fp "modify-firmware" "/usr/bin/modify-firmware"
+                sudo chmod 0755 "/usr/bin/modify-firmware"
+
                 sudo -E apt-get -qq autoremove --purge
                 sudo -E apt-get -qq clean
                 sudo timedatectl set-timezone "$TZ"
@@ -83,6 +139,7 @@ jobs:
                 ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
                 echo "status=success" >> $GITHUB_OUTPUT
 
+            # Rest of the steps remain unchanged...
             - name: Load custom feeds & execute diy-part1.sh
               id: feeds
               if: steps.clone.outcome == 'success' && !cancelled()
@@ -164,7 +221,6 @@ jobs:
                 echo "status=success" >> $GITHUB_OUTPUT
 
             - name: Upload firmware to Artifacts
-              # if: steps.organize.outcome == 'success' && !cancelled()
               uses: actions/upload-artifact@main
               with:
                 name: ${{ env.COMPILE_DATE }}-${{ env.OPENWRT_NAME }}-${{ env.UPLOAD_TAG_NAME }}${{ env.WIFI_INTERFACE }}
