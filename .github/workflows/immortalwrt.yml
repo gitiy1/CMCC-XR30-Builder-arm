@@ -1,4 +1,4 @@
-name: ImmortalWrt Builder
+name: ImmortalWrt Builder(ARM64)
 
 on:
     repository_dispatch:
@@ -17,13 +17,12 @@ env:
     OPENWRT_NAME: hanwckf
     UPLOAD_TAG_NAME: cmcc_xr30
     FEEDS_CONF: feeds.conf.default
-    # CONFIG_FILE: .config
     DIY_P1_SH: diy-part1.sh
     DIY_P2_SH: diy-part2.sh
 
 jobs:
     ImmortalWrt-Builder:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04-arm
 
         steps:
             - name: Checkout
@@ -36,12 +35,7 @@ jobs:
             - name: Free disk space (Ubuntu)
               uses: jlumbroso/free-disk-space@main
               with:
-                # this might remove tools that are actually needed,
-                # if set to "true" but frees about 6 GB
                 tool-cache: false
-
-                # all of these default to true, but feel free to set to
-                # "false" if necessary for your workflow
                 android: true
                 dotnet: true
                 haskell: true
@@ -78,6 +72,7 @@ jobs:
                 ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
                 echo "status=success" >> $GITHUB_OUTPUT
 
+            # Rest of the steps remain unchanged...
             - name: Load custom feeds & execute diy-part1.sh
               id: feeds
               if: steps.clone.outcome == 'success' && !cancelled()
@@ -102,6 +97,7 @@ jobs:
               if: steps.feeds-update.outcome == 'success' && !cancelled()
               run: |
                     cp -f openwrt/defconfig/mt7981-ax3000.config openwrt/.config
+                    cp -r $GITHUB_WORKSPACE/backport/* openwrt/
                     chmod +x $DIY_P2_SH
                     cd openwrt
                     $GITHUB_WORKSPACE/$DIY_P2_SH
@@ -159,7 +155,6 @@ jobs:
                 echo "status=success" >> $GITHUB_OUTPUT
 
             - name: Upload firmware to Artifacts
-              # if: steps.organize.outcome == 'success' && !cancelled()
               uses: actions/upload-artifact@main
               with:
                 name: ${{ env.COMPILE_DATE }}-${{ env.OPENWRT_NAME }}-${{ env.UPLOAD_TAG_NAME }}${{ env.WIFI_INTERFACE }}
