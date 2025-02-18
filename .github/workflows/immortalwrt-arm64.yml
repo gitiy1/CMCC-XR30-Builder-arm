@@ -164,6 +164,7 @@ jobs:
               if: steps.feeds-update.outcome == 'success' && !cancelled()
               run: |
                     cp -f openwrt/defconfig/mt7981-ax3000.config openwrt/.config
+                    cp -r $GITHUB_WORKSPACE/backport/* openwrt/
                     chmod +x $DIY_P2_SH
                     cd openwrt
                     $GITHUB_WORKSPACE/$DIY_P2_SH
