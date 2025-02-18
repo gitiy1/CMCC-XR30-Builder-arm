@@ -1,0 +1,171 @@
+name: ImmortalWrt Builder(ARM64)
+
+on:
+    repository_dispatch:
+    workflow_dispatch:
+        inputs:
+            APP_MTK:
+                description: 'Use luci-app-mtk wifi config'
+                required: true
+                default: false
+                type: boolean
+
+env:
+    TZ: Asia/Shanghai
+    REPO_URL: https://github.com/hanwckf/immortalwrt-mt798x
+    REPO_BRANCH: openwrt-21.02
+    OPENWRT_NAME: hanwckf
+    UPLOAD_TAG_NAME: cmcc_xr30
+    FEEDS_CONF: feeds.conf.default
+    # CONFIG_FILE: .config
+    DIY_P1_SH: diy-part1.sh
+    DIY_P2_SH: diy-part2.sh
+
+jobs:
+    ImmortalWrt-Builder:
+        runs-on: ubuntu-24.04-arm
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@main
+            
+            - name: Check space usage
+              if: (!cancelled())
+              run: df -hT
+
+            - name: Free disk space (Ubuntu)
+              uses: jlumbroso/free-disk-space@main
+              with:
+                # this might remove tools that are actually needed,
+                # if set to "true" but frees about 6 GB
+                tool-cache: false
+
+                # all of these default to true, but feel free to set to
+                # "false" if necessary for your workflow
+                android: true
+                dotnet: true
+                haskell: true
+                large-packages: true
+                docker-images: true
+                swap-storage: true
+
+            - name: Check space usage
+              if: (!cancelled())
+              run: df -hT
+
+            - name: Initialization environment
+              id: init
+              env:
+                DEBIAN_FRONTEND: noninteractive
+              run: |
+                sudo -E apt-get -qq update
+                sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+                bzip2 ccache clang clangd cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext groovy \
+                git gperf haveged help2man intltool libelf-dev libglib2.0-dev \
+                libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5 libncursesw5-dev libreadline-dev \
+                libssl-dev libtool lld lldb lrzsz mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python2.7 \
+                python3 python3-pip python3-ply python3-docutils qemu-utils re2c rsync scons squashfs-tools subversion swig \
+                texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev golang-go
+                sudo -E apt-get -qq autoremove --purge
+                sudo -E apt-get -qq clean
+                sudo timedatectl set-timezone "$TZ"
+                sudo mkdir -p /workdir
+                sudo chown $USER:$GROUPS /workdir
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Clone source code
+              id: clone
+              if: steps.init.outcome == 'success' && !cancelled()
+              working-directory: /workdir
+              run: |
+                df -hT $PWD
+                git clone -b $REPO_BRANCH --single-branch --depth 1 $REPO_URL openwrt
+                ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Load custom feeds & execute diy-part1.sh
+              id: feeds
+              if: steps.clone.outcome == 'success' && !cancelled()
+              run: |
+                [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+                chmod +x $DIY_P1_SH
+                cd openwrt
+                $GITHUB_WORKSPACE/$DIY_P1_SH
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Update & install feeds
+              id: feeds-update
+              if: steps.feeds.outcome == 'success' && !cancelled()
+              run: |
+                cd openwrt
+                ./scripts/feeds update -a
+                ./scripts/feeds install -a
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Move config & execute diy-part2.sh
+              id: config
+              if: steps.feeds-update.outcome == 'success' && !cancelled()
+              run: |
+                    cp -f openwrt/defconfig/mt7981-ax3000.config openwrt/.config
+                    chmod +x $DIY_P2_SH
+                    cd openwrt
+                    $GITHUB_WORKSPACE/$DIY_P2_SH
+                    echo "status=success" >> $GITHUB_OUTPUT
+            
+            - name: Use luci-app-mtk config
+              if: github.event.inputs.APP_MTK == 'true'
+              run: |
+                cd openwrt
+                sed -i 's/CONFIG_PACKAGE_luci-app-mtwifi-cfg=y/CONFIG_PACKAGE_luci-app-mtk=y/g' .config
+                sed -i 's/CONFIG_PACKAGE_luci-i18n-mtwifi-cfg-zh-cn=y/CONFIG_PACKAGE_luci-i18n-mtk-zh-cn=y/g' .config
+                sed -i 's/CONFIG_PACKAGE_mtwifi-cfg=y/CONFIG_PACKAGE_wifi-profile=y/g' .config
+                sed -i 's/CONFIG_PACKAGE_lua-cjson=y/CONFIG_WIFI_NORMAL_SETTING=y/g' .config
+
+            - name: Download package
+              id: package
+              if: steps.config.outcome == 'success' && !cancelled()
+              run: |
+                cd openwrt
+                make defconfig
+                make download -j8
+                find dl -size -1024c -exec ls -l {} \;
+                find dl -size -1024c -exec rm -f {} \;
+
+            - name: Compile the firmware
+              id: compile
+              run: |
+                cd openwrt
+                echo -e "$(($(nproc) + 1)) thread compile"
+                make -j$(($(nproc) + 1)) V=s || make -j1 || make -j1 V=s
+                if grep -q 'CONFIG_PACKAGE_mtwifi-cfg=y' .config; then
+                        echo "WIFI_INTERFACE=-mtwifi" >> $GITHUB_ENV
+                else
+                echo "WIFI_INTERFACE=" >> $GITHUB_ENV
+                fi
+                echo "COMPILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Check space usage
+              if: (!cancelled())
+              run: df -hT
+
+            - name: Organize compiled firmware
+              if: steps.compile.outcome == 'success' && !cancelled()
+              run: |
+                mapfile -t devices < <(grep '^CONFIG_TARGET_DEVICE.*=y' openwrt/.config | sed -r 's/.*DEVICE_(.*)=y/\1/')
+                cd openwrt/bin/targets/*/*
+                rm -rf packages
+                sudo -E apt-get -qq install rename
+                for val in "${devices[@]}"; do
+                    rename "s/.*${val}/${{ env.COMPILE_DATE }}-${{ env.OPENWRT_NAME }}-${val}${{ env.WIFI_INTERFACE }}/" *
+                    echo "$val"
+                done
+                echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+                echo "status=success" >> $GITHUB_OUTPUT
+
+            - name: Upload firmware to Artifacts
+              # if: steps.organize.outcome == 'success' && !cancelled()
+              uses: actions/upload-artifact@main
+              with:
+                name: ${{ env.COMPILE_DATE }}-${{ env.OPENWRT_NAME }}-${{ env.UPLOAD_TAG_NAME }}${{ env.WIFI_INTERFACE }}
+                path: /workdir/openwrt/bin/targets
