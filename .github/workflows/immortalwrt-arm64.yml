@@ -62,7 +62,16 @@ jobs:
                     pkgconf python3-dev python3 python3-pip python3-cryptography python3-docutils \
                     python3-ply python3-pyelftools python3-requests qemu-utils quilt re2c rsync scons \
                     sharutils squashfs-tools subversion swig texinfo uglifyjs unzip vim wget xmlto \
-                    zlib1g-dev zstd xxd golang-go
+                    zlib1g-dev zstd xxd
+
+                # Install Go from official binary distribution
+                GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -n1)
+                wget "https://go.dev/dl/${GO_VERSION}.linux-arm64.tar.gz"
+                sudo rm -rf /usr/local/go
+                sudo tar -C /usr/local -xzf "${GO_VERSION}.linux-arm64.tar.gz"
+                rm "${GO_VERSION}.linux-arm64.tar.gz"
+                echo "export PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
+                echo "export GOPATH=/usr/local/go" >> $GITHUB_ENV
 
                 # Install LLVM 18
                 wget https://apt.llvm.org/llvm.sh
