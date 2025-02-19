@@ -247,6 +247,7 @@ config_package_add kmod-xdp-sockets-diag
 git clone https://github.com/QiuSimons/luci-app-daed package/dae
 mkdir -p Package/libcron && wget -O Package/libcron/Makefile https://raw.githubusercontent.com/immortalwrt/packages/refs/heads/master/libs/libcron/Makefile
 config_package_add luci-app-daed
+grep "PACKAGE_rd05a1" tmp/.config-package.in
 make package/dae/luci-app-daed/compile V=s
 
 # ## Frp Latest version patch
