@@ -30,3 +30,4 @@ $(eval $(call KernelPackage,xdp-sockets-diag))
 git clone https://github.com/sbwml/luci-app-mentohust package/mentohust
 git clone --depth 1  https://github.com/217heidai/OpenWrt-Packages.git package/custom
 git clone https://github.com/QiuSimons/luci-app-daed package/dae
+mkdir -p Package/libcron && wget -O Package/libcron/Makefile https://raw.githubusercontent.com/immortalwrt/packages/refs/heads/master/libs/libcron/Makefile
