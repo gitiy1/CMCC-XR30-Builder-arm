@@ -119,11 +119,11 @@ config_package_add fish
 ## Temporarily disable USB3.0
 config_package_add luci-app-usb3disable
 ## USB
-config_package_add kmod-usb-net-huawei-cdc-ncm
+# config_package_add kmod-usb-net-huawei-cdc-ncm
 config_package_add kmod-usb-net-ipheth
 config_package_add kmod-usb-net-aqc111
 config_package_add kmod-usb-net-rtl8152-vendor
-config_package_add kmod-usb-net-sierrawireless
+# config_package_add kmod-usb-net-sierrawireless
 config_package_add kmod-usb-storage
 config_package_add kmod-usb-ohci
 config_package_add kmod-usb-uhci
