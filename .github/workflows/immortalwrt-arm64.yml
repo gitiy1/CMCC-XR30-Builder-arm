@@ -194,7 +194,7 @@ jobs:
               run: |
                 cd openwrt
                 make defconfig
-                sed -i 's|^CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT=.*|CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT="/usr/bin/go"|' .config
+                sed -i 's|^CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT=.*|CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT="/usr/local/go"|' .config
                 make download -j8
                 find dl -size -1024c -exec ls -l {} \;
                 find dl -size -1024c -exec rm -f {} \;
