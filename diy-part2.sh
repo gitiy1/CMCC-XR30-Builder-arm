@@ -241,6 +241,7 @@ config_add KERNEL_MODULE_ALLOW_BTF_MISMATCH
 config_package_add kmod-sched-core
 config_package_add kmod-sched-bpf
 config_package_add kmod-xdp-sockets-diag
+config_add USE_LLVM_HOST
 
 ## daed
 
