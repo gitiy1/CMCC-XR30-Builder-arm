@@ -159,12 +159,12 @@ config_package_add vim-full
 config_package_add iperf
 
 # MentoHust
-git clone https://github.com/sbwml/luci-app-mentohust package/mentohust
+# git clone https://github.com/sbwml/luci-app-mentohust package/mentohust
 config_package_add luci-app-mentohust
 
 # Third-party packages
-mkdir -p package/custom
-git clone --depth 1  https://github.com/217heidai/OpenWrt-Packages.git package/custom
+# mkdir -p package/custom
+# git clone --depth 1  https://github.com/217heidai/OpenWrt-Packages.git package/custom
 clean_packages package/custom
 
 ## golang
@@ -208,24 +208,24 @@ config_package_add tmux
 
 ## Try to enable ebpf
 
-echo '
+# echo '
 
-define KernelPackage/xdp-sockets-diag
-  SUBMENU:=$(NETWORK_SUPPORT_MENU)
-  TITLE:=PF_XDP sockets monitoring interface support for ss utility
-  KCONFIG:= \
-	CONFIG_XDP_SOCKETS=y \
-	CONFIG_XDP_SOCKETS_DIAG
-  FILES:=$(LINUX_DIR)/net/xdp/xsk_diag.ko
-  AUTOLOAD:=$(call AutoLoad,31,xsk_diag)
-endef
+# define KernelPackage/xdp-sockets-diag
+#   SUBMENU:=$(NETWORK_SUPPORT_MENU)
+#   TITLE:=PF_XDP sockets monitoring interface support for ss utility
+#   KCONFIG:= \
+# 	CONFIG_XDP_SOCKETS=y \
+# 	CONFIG_XDP_SOCKETS_DIAG
+#   FILES:=$(LINUX_DIR)/net/xdp/xsk_diag.ko
+#   AUTOLOAD:=$(call AutoLoad,31,xsk_diag)
+# endef
 
-define KernelPackage/xdp-sockets-diag/description
- Support for PF_XDP sockets monitoring interface used by the ss tool
-endef
+# define KernelPackage/xdp-sockets-diag/description
+#  Support for PF_XDP sockets monitoring interface used by the ss tool
+# endef
 
-$(eval $(call KernelPackage,xdp-sockets-diag))
-' >> package/kernel/linux/modules/netsupport.mk
+# $(eval $(call KernelPackage,xdp-sockets-diag))
+# ' >> package/kernel/linux/modules/netsupport.mk
 
 
 config_add DEVEL
@@ -244,8 +244,8 @@ config_package_add kmod-xdp-sockets-diag
 
 ## daed
 
-git clone https://github.com/QiuSimons/luci-app-daed package/dae
-mkdir -p Package/libcron && wget -O Package/libcron/Makefile https://raw.githubusercontent.com/immortalwrt/packages/refs/heads/master/libs/libcron/Makefile
+# git clone https://github.com/QiuSimons/luci-app-daed package/dae
+# mkdir -p Package/libcron && wget -O Package/libcron/Makefile https://raw.githubusercontent.com/immortalwrt/packages/refs/heads/master/libs/libcron/Makefile
 config_package_add luci-app-daed
 # echo "CONFIG_PACKAGE_rd05a1=n" >> .config
 # grep “rd05a1” .config
